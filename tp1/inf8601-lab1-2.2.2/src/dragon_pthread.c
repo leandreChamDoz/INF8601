@@ -168,11 +168,18 @@ int dragon_limits_pthread(limits_t *limits, uint64_t size, int nb_thread)
 
 	/* 1. Allouer de l'espace pour threads et threads_data. */
 	threads = malloc(sizeof(pthread_t) * nb_thread);
-	thread_data = malloc(sizeof(struct limit_data) * nb_thread);
+	thread_data = malloc(sizeof(struct limit_data));
+
+	thread_data->pieces = masters;
+
+	int step = NB_TILES / nb_thread;
 
 	/* 2. Lancement du calcul en parallèle avec dragon_limit_worker. */
 	for (int i = 0; i < nb_thread; i++) {
-		if(pthread_create(&threads[i], NULL, dragon_limit_worker, (void*) &thread_data[i])) {
+		thread_data->start = i * step;
+		thread_data->end = (i + 1) * step;
+
+		if(pthread_create(&threads[i], NULL, dragon_limit_worker, (void*) &thread_data)) {
 			printf("erreur lors de la creation des threads\n");
 			goto err;
 		}
