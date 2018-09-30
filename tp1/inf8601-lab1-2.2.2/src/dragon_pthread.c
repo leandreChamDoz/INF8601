@@ -170,9 +170,15 @@ int dragon_limits_pthread(limits_t *limits, uint64_t size, int nb_thread)
 	threads = malloc(sizeof(pthread_t) * nb_thread);
 	thread_data = malloc(sizeof(struct limit_data));
 
-	thread_data->pieces = masters;
+	for (int i = 0; i < NB_TILES; i++) {
+		thread_data->pieces[i] = masters[i];
+	}
 
-	int step = NB_TILES / nb_thread;
+	if (nb_thread >= size)
+		nb_thread = size;
+
+	int step = size / nb_thread;
+	int final_step = size % nb_thread;
 
 	/* 2. Lancement du calcul en parallèle avec dragon_limit_worker. */
 	for (int i = 0; i < nb_thread; i++) {
@@ -183,6 +189,14 @@ int dragon_limits_pthread(limits_t *limits, uint64_t size, int nb_thread)
 			printf("erreur lors de la creation des threads\n");
 			goto err;
 		}
+	}
+
+	thread_data->start = nb_thread * step;
+	thread_data->end = size;
+
+	if(pthread_create(&threads[i], NULL, dragon_limit_worker, (void*) &thread_data)) {
+		printf("erreur lors de la creation des threads\n");
+		goto err;
 	}
 
 	/* 3. Attendre la fin du traitement. */
@@ -200,9 +214,15 @@ int dragon_limits_pthread(limits_t *limits, uint64_t size, int nb_thread)
 	 * doivent être fusionnées ensemble.
 	 * */
 
+
+	for (int i = 0 ; i < NB_TILES; i++) {
+		piece_merge(&masters[i], thread_data->pieces[i], tiles_orientation[i]);
+	}
+
 	/* La limite globale est calculée à partir des limites
 	 * de chaque dragon calculées à l'étape 4.
 	 */
+
 	merge_limits(&masters[0].limits, &masters[1].limits);
 	merge_limits(&masters[0].limits, &masters[2].limits);
 	merge_limits(&masters[0].limits, &masters[3].limits);
