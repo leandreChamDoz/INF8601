@@ -178,7 +178,6 @@ int dragon_limits_pthread(limits_t *limits, uint64_t size, int nb_thread)
 		nb_thread = size;
 
 	int step = size / nb_thread;
-	int final_step = size % nb_thread;
 
 	/* 2. Lancement du calcul en parallèle avec dragon_limit_worker. */
 	for (int i = 0; i < nb_thread; i++) {
