@@ -1,0 +1,15 @@
+*Makefile
+*.m4
+*autom4te.cache
+*config*
+*libtool
+*ltmain.sh
+.deps
+*.o
+*.in
+*.a
+*.log
+*.ppm
+*.pgm
+*.odt*
+
