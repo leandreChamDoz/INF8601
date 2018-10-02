@@ -59,15 +59,8 @@ class DragonLimits
 class DragonDraw
 {
   public:
-	DragonDraw(draw_data *draw_data)
-	{
-		this->_draw_data = draw_data;
-	}
-
-	DragonDraw(const DragonDraw &d)
-	{
-		this->_draw_data = d._draw_data;
-	}
+	DragonDraw(const DragonDraw &d) { this->_draw_data = d._draw_data; }
+	DragonDraw(draw_data *draw_data) { this->_draw_data = draw_data; }
 
 	void operator()(const blocked_range<uint64_t> &range) const
 	{
@@ -89,15 +82,8 @@ class DragonDraw
 class DragonRender
 {
   public:
-	DragonRender(draw_data *draw_data)
-	{
-		this->_draw_data = draw_data;
-	}
-
-	DragonRender(const DragonRender &d)
-	{
-		this->_draw_data = d._draw_data;
-	}
+	DragonRender(const DragonRender &d) { this->_draw_data = d._draw_data; }
+	DragonRender(draw_data *draw_data) { this->_draw_data = draw_data; }
 
 	void operator()(const blocked_range<uint64_t> &range) const
 	{
@@ -119,15 +105,8 @@ class DragonRender
 class DragonClear
 {
   public:
-	DragonClear(draw_data *draw_data)
-	{
-		this->_draw_data = draw_data;
-	}
-
-	DragonClear(const DragonClear &d)
-	{
-		this->_draw_data = d._draw_data;
-	}
+	DragonClear(const DragonClear &d) { this->_draw_data = d._draw_data; }
+	DragonClear(draw_data *draw_data) { this->_draw_data = draw_data; }
 
 	void operator()(const blocked_range<uint64_t> &range) const
 	{
