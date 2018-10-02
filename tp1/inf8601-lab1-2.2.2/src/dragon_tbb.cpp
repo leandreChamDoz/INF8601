@@ -29,8 +29,8 @@ class DragonLimits
 	{
 		for (size_t i = 0; i < NB_TILES; i++)
 		{
-			pieces[i].orientation = tiles_orientation[i];
 			piece_init(&pieces[i]);
+			pieces[i].orientation = tiles_orientation[i];
 		}
 	}
 
@@ -38,8 +38,8 @@ class DragonLimits
 	{
 		for (size_t i = 0; i < NB_TILES; i++)
 		{
-			pieces[i].orientation = tiles_orientation[i];
 			piece_init(&pieces[i]);
+			pieces[i].orientation = tiles_orientation[i];
 		}
 	}
 
@@ -51,9 +51,8 @@ class DragonLimits
 
 	void join(DragonLimits &d)
 	{
-
 		for (size_t i = 0; i < NB_TILES; i++)
-			piece_merge(&d.pieces[i], pieces[i], tiles_orientation[i]);
+			piece_merge(&pieces[i], d.pieces[i], tiles_orientation[i]);
 	}
 };
 
@@ -89,6 +88,32 @@ class DragonDraw
 
 class DragonRender
 {
+  public:
+	DragonRender(draw_data *draw_data)
+	{
+		this->_draw_data = draw_data;
+	}
+
+	DragonRender(const DragonRender &d)
+	{
+		this->_draw_data = d._draw_data;
+	}
+
+	void operator()(const blocked_range<uint64_t> &range) const
+	{
+		scale_dragon(range.begin(),
+					 range.end(),
+					 this->_draw_data->image,
+					 this->_draw_data->image_width,
+					 this->_draw_data->image_height,
+					 this->_draw_data->dragon,
+					 this->_draw_data->dragon_width,
+					 this->_draw_data->dragon_height,
+					 this->_draw_data->palette);
+	}
+
+  private:
+	draw_data *_draw_data;
 };
 
 class DragonClear
@@ -115,7 +140,6 @@ class DragonClear
 
 int dragon_draw_tbb(char **canvas, struct rgb *image, int width, int height, uint64_t size, int nb_thread)
 {
-	TODO("dragon_draw_tbb");
 	struct draw_data data;
 	limits_t limits;
 	char *dragon = NULL;
@@ -133,7 +157,6 @@ int dragon_draw_tbb(char **canvas, struct rgb *image, int width, int height, uin
 
 	/* 1. Calculer les limites du dragon */
 	dragon_limits_tbb(&limits, size, nb_thread);
-
 	task_scheduler_init init(nb_thread);
 
 	dragon_width = limits.maximums.x - limits.minimums.x;
@@ -168,19 +191,20 @@ int dragon_draw_tbb(char **canvas, struct rgb *image, int width, int height, uin
 	data.tid = (int *)calloc(nb_thread, sizeof(int));
 
 	/* 2. Initialiser la surface : DragonClear */
-	DragonClear dragonClear(&data);
-	parallel_for(blocked_range<uint64_t>(0, dragon_surface), dragonClear);
+	DragonClear dragon_clear(&data);
+	parallel_for(blocked_range<uint64_t>(0, dragon_surface), dragon_clear);
 
 	/* 3. Dessiner le dragon : DragonDraw */
-	DragonDraw dragonDraw(&data);
-	parallel_for(blocked_range<uint64_t>(0, data.size), dragonDraw);
+	DragonDraw dragon_draw(&data);
+	parallel_for(blocked_range<uint64_t>(0, data.size), dragon_draw);
 
 	/* 4. Effectuer le rendu final */
+	DragonRender dragon_render(&data);
+	parallel_for(blocked_range<uint64_t>(0, data.image_height), dragon_render);
 
 	free_palette(palette);
 	FREE(data.tid);
-	//*canvas = dragon;
-	*canvas = NULL; // TODO: Retourner le dragon calculé
+	*canvas = dragon;
 	return 0;
 }
 
