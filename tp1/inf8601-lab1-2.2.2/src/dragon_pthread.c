@@ -39,23 +39,64 @@ void printf_threadsafe(char *format, ...)
  */
 void* dragon_draw_worker(void *data)
 {
+	struct draw_data* worker_data = (struct draw_data*) data;
+
 	/* 1. Initialiser la surface */
+	int stepZone = worker_data->dragon_height * worker_data->dragon_width / worker_data->nb_thread;
+	int startZone = worker_data->id * stepZone;
+	int endZone;
+
+	if (worker_data->id == (worker_data->nb_thread - 1))
+		endZone = worker_data->dragon_height * worker_data->dragon_width;
+	else
+		endZone = stepZone * (worker_data->id + 1);
+
+	init_canvas(startZone, endZone, worker_data->dragon, -1);
+
+	pthread_barrier_wait(worker_data->barrier);
 
 	/* 2. Dessiner les dragons dans les 4 directions
 	 *
 	 * Il est attendu que chaque threads dessine une partie
 	 * de chaque dragon.
 	 * */
+	int stepDepth = worker_data->size / worker_data->nb_thread;
+	int start = stepDepth * worker_data->id;
+	int end;
+
+	if (worker_data->id == (worker_data->nb_thread - 1))
+		end = worker_data->size;
+	else
+		end = stepDepth * (worker_data->id + 1);
+
+	printf_threadsafe("THREAD #%d (Range : %d - %d, Real TID : %d)\n", worker_data->id, start, end, gettid());
+
+	for(int i = 0; i < NB_TILES; i++) {
+		dragon_draw_raw(i, start, end, worker_data->dragon, 
+						worker_data->dragon_width, worker_data->dragon_height, worker_data->limits, worker_data->id);
+	}
+
+	pthread_barrier_wait(worker_data->barrier);
 
 	/* 3. Effectuer le rendu final */
+	int stepImage = worker_data->image_height / worker_data->nb_thread;
+	int startImage = worker_data->id * stepImage;
+	int endImage;
+
+	if (worker_data->id == (worker_data->nb_thread - 1))
+		endImage = worker_data->image_height;
+	else
+		endImage = stepImage * (worker_data->id + 1);
+	
+	scale_dragon(startImage, endImage, worker_data->image, 
+				 worker_data->image_width, worker_data->image_height, worker_data->dragon,
+				 worker_data->dragon_width, worker_data->dragon_height, worker_data->palette);
 
 	return NULL;
 }
 
 int dragon_draw_pthread(char **canvas, struct rgb *image, int width, int height, uint64_t size, int nb_thread)
 {
-	TODO("dragon_draw_pthread");
-
 	pthread_t *threads = NULL;
 	pthread_barrier_t barrier;
 	limits_t lim;
@@ -72,6 +113,11 @@ int dragon_draw_pthread(char **canvas, struct rgb *image, int width, int height,
 		goto err;
 
 	/* 1. Initialiser barrier. */
+
+	if (pthread_barrier_init(&barrier, NULL, nb_thread)) {
+		printf("erreur lors de la création de la barrier");
+		goto err;
+	}
 
 	if (dragon_limits_pthread(&lim, size, nb_thread) < 0)
 		goto err;
@@ -109,18 +155,42 @@ int dragon_draw_pthread(char **canvas, struct rgb *image, int width, int height,
 	info.barrier = &barrier;
 	info.palette = palette;
 
+	for (int i = 0; i < nb_thread; i++) {
+		data[i] = info;
+		data[i].id = i;
+	}
+
+	printf("-----PThread Stats Start-----\n");
+
 	/* 2. Lancement du calcul parallèle principal avec dragon_draw_worker */
+	for(int i = 0; i < nb_thread; i++) {
+		if(pthread_create(&threads[i], NULL, dragon_draw_worker, (void*) &data[i])) {
+			printf("erreur lors de la creation des threads\n");
+			goto err;
+		}
+	}
 
 	/* 3. Attendre la fin du traitement */
+	for(int i = 0; i < nb_thread; i++) {
+		if(pthread_join(threads[i], NULL)) {
+			printf("erreur lors de l'attente des threads\n");
+			goto err;
+		}
+	}
+
+	printf("-----PThread Stats End-----\n");
 
 	/* 4. Destruction des variables. */
+	if(pthread_barrier_destroy(&barrier)) {
+		printf("erreur lors de la destruction de la barrier");
+		goto err;
+	}
 
 done:
 	FREE(data);
 	FREE(threads);
 	free_palette(palette);
-	// *canvas = dragon;
-	*canvas = NULL; // TODO: retourner le dragon calculé
+	*canvas = dragon;
 	return ret;
 
 err:
@@ -149,8 +219,6 @@ void *dragon_limit_worker(void *data)
  */
 int dragon_limits_pthread(limits_t *limits, uint64_t size, int nb_thread)
 {
-	TODO("dragon_limits_pthread");
-
 	int ret = 0;
 	int i;
 	pthread_t *threads = NULL;
@@ -168,10 +236,14 @@ int dragon_limits_pthread(limits_t *limits, uint64_t size, int nb_thread)
 
 	/* 1. Allouer de l'espace pour threads et threads_data. */
 	threads = malloc(sizeof(pthread_t) * nb_thread);
-	thread_data = malloc(sizeof(struct limit_data));
+	thread_data = malloc(sizeof(struct limit_data) * nb_thread);
 
-	for (int i = 0; i < NB_TILES; i++) {
-		thread_data->pieces[i] = masters[i];
+	for (int i = 0; i < nb_thread; i++) {
+		for (int j = 0; j < NB_TILES; j++) {
+			piece_init(&thread_data[i].pieces[j]);
+			thread_data[i].pieces[j].orientation = tiles_orientation[j];
+			thread_data[i].id = i;
+		}
 	}
 
 	if (nb_thread >= size)
@@ -180,20 +252,20 @@ int dragon_limits_pthread(limits_t *limits, uint64_t size, int nb_thread)
 	int step = size / nb_thread;
 
 	/* 2. Lancement du calcul en parallèle avec dragon_limit_worker. */
-	for (int i = 0; i < nb_thread; i++) {
-		thread_data->start = i * step;
-		thread_data->end = (i + 1) * step;
+	for (int i = 0; i < (nb_thread - 1); i++) {
+		thread_data[i].start = i * step;
+		thread_data[i].end = (i + 1) * step;
 
-		if(pthread_create(&threads[i], NULL, dragon_limit_worker, (void*) &thread_data)) {
+		if(pthread_create(&threads[i], NULL, dragon_limit_worker, (void*) &thread_data[i])) {
 			printf("erreur lors de la creation des threads\n");
 			goto err;
 		}
 	}
 
-	thread_data->start = nb_thread * step;
-	thread_data->end = size;
+	thread_data[nb_thread - 1].start = (nb_thread - 1) * step;
+	thread_data[nb_thread - 1].end = size;
 
-	if(pthread_create(&threads[i], NULL, dragon_limit_worker, (void*) &thread_data)) {
+	if(pthread_create(&threads[nb_thread - 1], NULL, dragon_limit_worker, (void*) &thread_data[nb_thread - 1])) {
 		printf("erreur lors de la creation des threads\n");
 		goto err;
 	}
@@ -213,9 +285,10 @@ int dragon_limits_pthread(limits_t *limits, uint64_t size, int nb_thread)
 	 * doivent être fusionnées ensemble.
 	 * */
 
-
-	for (int i = 0 ; i < NB_TILES; i++) {
-		piece_merge(&masters[i], thread_data->pieces[i], tiles_orientation[i]);
+	for (int i = 0 ; i < nb_thread; i++) {
+		for (int j = 0 ; j < NB_TILES; j++) {
+			piece_merge(&masters[j], thread_data[i].pieces[j], tiles_orientation[j]);
+		}
 	}
 
 	/* La limite globale est calculée à partir des limites
