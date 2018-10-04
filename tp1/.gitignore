@@ -1,7 +1,6 @@
 
 *.m4
 *autom4te.cache
-*config*
 *libtool
 *ltmain.sh
 .deps
