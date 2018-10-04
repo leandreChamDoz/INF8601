@@ -1,0 +1,38 @@
+=====================================================
+   INF8601-LAB1-master 2.2.2: tests/test-suite.log
+=====================================================
+
+# TOTAL: 1
+# PASS:  0
+# SKIP:  0
+# XFAIL: 0
+# FAIL:  1
+# XPASS: 0
+# ERROR: 0
+
+.. contents:: :depth: 2
+
+FAIL: test-all.sh
+=================
+
+PASS     limits    pthread
+PASS     limits        tbb
+-----PThread Stats Start-----
+THREAD #0 (Range : 0 - 419430, Real TID : 29631)
+THREAD #2 (Range : 838860 - 1258290, Real TID : 29633)
+THREAD #3 (Range : 1258290 - 1677720, Real TID : 29634)
+THREAD #7 (Range : 2936010 - 3355440, Real TID : 29638)
+THREAD #4 (Range : 1677720 - 2097150, Real TID : 29635)
+THREAD #5 (Range : 2097150 - 2516580, Real TID : 29636)
+THREAD #6 (Range : 2516580 - 2936010, Real TID : 29637)
+THREAD #1 (Range : 419430 - 838860, Real TID : 29632)
+THREAD #9 (Range : 3774870 - 4194304, Real TID : 29640)
+THREAD #8 (Range : 3355440 - 3774870, Real TID : 29639)
+-----PThread Stats End-----
+PASS       draw    pthread threshold=80 gap=56 (0.000%)
+FAIL       draw        tbb threshold=80 gap=114704 (0.385%)
+expected: dragon_check_failed_serial.ppm
+actual  : dragon_check_failed_tbb.ppm
+Error while executing command check
+FAIL test-all.sh (exit status: 1)
+

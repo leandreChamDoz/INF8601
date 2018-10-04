@@ -64,15 +64,32 @@ class DragonDraw
 
 	void operator()(const blocked_range<uint64_t> &range) const
 	{
-		for (size_t i = 0; i < NB_TILES; i++)
-			dragon_draw_raw(i,
-							range.begin(),
-							range.end(),
-							this->_draw_data->dragon,
-							this->_draw_data->dragon_width,
-							this->_draw_data->dragon_height,
-							this->_draw_data->limits,
-							range.begin() * this->_draw_data->nb_thread / this->_draw_data->size);
+		xy_t position;
+		xy_t orientation;
+		uint64_t n;
+		for (size_t k = 0; k < NB_TILES; k++)
+		{
+			position = compute_position(k, range.begin());
+			orientation = compute_orientation(k, range.begin());
+			position.x -= this->_draw_data->limits.minimums.x;
+			position.y -= this->_draw_data->limits.minimums.y;
+
+			for (n = range.begin() + 1; n <= range.end(); n++)
+			{
+				int j = (position.x + (position.x + orientation.x)) >> 1;
+				int i = (position.y + (position.y + orientation.y)) >> 1;
+				int index = i * this->_draw_data->dragon_width + j;
+
+				this->_draw_data->dragon[index] = n * this->_draw_data->nb_thread / this->_draw_data->size;
+
+				position.x += orientation.x;
+				position.y += orientation.y;
+				if (((n & -n) << 1) & n)
+					rotate_left(&orientation);
+				else
+					rotate_right(&orientation);
+			}
+		}
 	}
 
   private:
