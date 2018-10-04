@@ -59,11 +59,22 @@ class DragonLimits
 class DragonDraw
 {
   public:
-	DragonDraw(const DragonDraw &d) { this->_draw_data = d._draw_data; }
-	DragonDraw(draw_data *draw_data) { this->_draw_data = draw_data; }
+	DragonDraw(const DragonDraw &d, TidMap *tidMap)
+	{
+		this->_draw_data = d._draw_data;
+		this->_tidMap = tidMap;
+	}
+	DragonDraw(draw_data *draw_data, TidMap *tidMap)
+	{
+		this->_draw_data = draw_data;
+		this->_tidMap = tidMap;
+	}
 
 	void operator()(const blocked_range<uint64_t> &range) const
 	{
+		// cout << "THREAD #" << _draw_data->id << " (Range : " << range.begin() << " - " << range.end() << ", Real TID : " << gettid() << endl;
+		this->_draw_data->id = _tidMap->getIdFromTid(gettid());
+
 		xy_t position;
 		xy_t orientation;
 		uint64_t n;
@@ -93,6 +104,7 @@ class DragonDraw
 	}
 
   private:
+	TidMap *_tidMap;
 	draw_data *_draw_data;
 };
 
@@ -191,7 +203,10 @@ int dragon_draw_tbb(char **canvas, struct rgb *image, int width, int height, uin
 	parallel_for(blocked_range<uint64_t>(0, dragon_surface), dragon_clear);
 
 	/* 3. Dessiner le dragon : DragonDraw */
-	DragonDraw dragon_draw(&data);
+
+	TidMap *tidMap = new TidMap(nb_thread);
+
+	DragonDraw dragon_draw(&data, tidMap);
 	parallel_for(blocked_range<uint64_t>(0, data.size), dragon_draw);
 
 	/* 4. Effectuer le rendu final */
@@ -200,6 +215,8 @@ int dragon_draw_tbb(char **canvas, struct rgb *image, int width, int height, uin
 
 	free_palette(palette);
 	FREE(data.tid);
+	tidMap->dump();
+	FREE(tidMap);
 	*canvas = dragon;
 	return 0;
 }
