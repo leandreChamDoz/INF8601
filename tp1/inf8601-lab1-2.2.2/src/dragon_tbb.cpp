@@ -16,9 +16,32 @@ extern "C"
 #include "dragon_tbb.h"
 #include "tbb/tbb.h"
 #include "TidMap.h"
+#include <stdarg.h>
 
 using namespace std;
 using namespace tbb;
+
+int counter = 0;
+
+#define PRINT_PTHREAD_ERROR(err, msg) \
+	do                                \
+	{                                 \
+		errno = err;                  \
+		perror(msg);                  \
+	} while (0)
+
+pthread_mutex_t mutex_stdout;
+
+void printf_threadsafe(char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+	pthread_mutex_lock(&mutex_stdout);
+	vprintf(format, ap);
+	pthread_mutex_unlock(&mutex_stdout);
+	va_end(ap);
+}
 
 class DragonLimits
 {
@@ -73,7 +96,12 @@ class DragonDraw
 	void operator()(const blocked_range<uint64_t> &range) const
 	{
 		// cout << "THREAD #" << _draw_data->id << " (Range : " << range.begin() << " - " << range.end() << ", Real TID : " << gettid() << endl;
-		this->_draw_data->id = _tidMap->getIdFromTid(gettid());
+		int new_tid = _tidMap->getIdFromTid(gettid());
+		this->_draw_data->id = new_tid;
+
+		counter++;
+		printf_threadsafe("THREAD\t (Range : %d - %d, Real TID : %d)\n", range.begin(), range.end(), gettid());
+
 
 		xy_t position;
 		xy_t orientation;
@@ -101,6 +129,7 @@ class DragonDraw
 					rotate_right(&orientation);
 			}
 		}
+
 	}
 
   private:
@@ -212,6 +241,8 @@ int dragon_draw_tbb(char **canvas, struct rgb *image, int width, int height, uin
 	/* 4. Effectuer le rendu final */
 	DragonRender dragon_render(&data);
 	parallel_for(blocked_range<uint64_t>(0, data.image_height), dragon_render);
+
+	cout << "Total:\t" << counter << endl;
 
 	free_palette(palette);
 	FREE(data.tid);
