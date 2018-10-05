@@ -7,6 +7,11 @@
 
 #include <iostream>
 
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
+#include <errno.h>
+
 extern "C"
 {
 #include "dragon.h"
@@ -16,9 +21,28 @@ extern "C"
 #include "dragon_tbb.h"
 #include "tbb/tbb.h"
 #include "TidMap.h"
+#include <atomic>
 
 using namespace std;
 using namespace tbb;
+
+std::atomic<int> counter;
+
+#define PRINT_PTHREAD_ERROR(err, msg) \
+	do { errno = err; perror(msg); } while(0)
+
+pthread_mutex_t mutex_stdout;
+
+void printf_threadsafe(const char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+	pthread_mutex_lock(&mutex_stdout);
+	vprintf(format, ap);
+	pthread_mutex_unlock(&mutex_stdout);
+	va_end(ap);
+}
 
 class DragonLimits
 {
@@ -59,23 +83,55 @@ class DragonLimits
 class DragonDraw
 {
   public:
-	DragonDraw(const DragonDraw &d) { this->_draw_data = d._draw_data; }
-	DragonDraw(draw_data *draw_data) { this->_draw_data = draw_data; }
+	DragonDraw(const DragonDraw &d, TidMap *tidMap)
+	{
+		this->_draw_data = d._draw_data;
+		this->_tidMap = tidMap;
+	}
+	DragonDraw(draw_data *draw_data, TidMap *tidMap)
+	{
+		this->_draw_data = draw_data;
+		this->_tidMap = tidMap;
+	}
 
 	void operator()(const blocked_range<uint64_t> &range) const
 	{
-		for (size_t i = 0; i < NB_TILES; i++)
-			dragon_draw_raw(i,
-							range.begin(),
-							range.end(),
-							this->_draw_data->dragon,
-							this->_draw_data->dragon_width,
-							this->_draw_data->dragon_height,
-							this->_draw_data->limits,
-							range.begin() * this->_draw_data->nb_thread / this->_draw_data->size);
+		this->_draw_data->id = _tidMap->getIdFromTid(gettid());
+
+		string msg = "THREAD #%d (Range : %d - %d, Real TID : %d)\n";
+		const char *array = msg.c_str();
+		printf_threadsafe(array, counter++, range.begin(), range.end(), gettid());
+
+		xy_t position;
+		xy_t orientation;
+		uint64_t n;
+		for (size_t k = 0; k < NB_TILES; k++)
+		{
+			position = compute_position(k, range.begin());
+			orientation = compute_orientation(k, range.begin());
+			position.x -= this->_draw_data->limits.minimums.x;
+			position.y -= this->_draw_data->limits.minimums.y;
+
+			for (n = range.begin() + 1; n <= range.end(); n++)
+			{
+				int j = (position.x + (position.x + orientation.x)) >> 1;
+				int i = (position.y + (position.y + orientation.y)) >> 1;
+				int index = i * this->_draw_data->dragon_width + j;
+
+				this->_draw_data->dragon[index] = n * this->_draw_data->nb_thread / this->_draw_data->size;
+
+				position.x += orientation.x;
+				position.y += orientation.y;
+				if (((n & -n) << 1) & n)
+					rotate_left(&orientation);
+				else
+					rotate_right(&orientation);
+			}
+		}
 	}
 
   private:
+	TidMap *_tidMap;
 	draw_data *_draw_data;
 };
 
@@ -174,15 +230,23 @@ int dragon_draw_tbb(char **canvas, struct rgb *image, int width, int height, uin
 	parallel_for(blocked_range<uint64_t>(0, dragon_surface), dragon_clear);
 
 	/* 3. Dessiner le dragon : DragonDraw */
-	DragonDraw dragon_draw(&data);
+
+	counter = 0;
+	TidMap *tidMap = new TidMap(nb_thread);
+
+	DragonDraw dragon_draw(&data, tidMap);
 	parallel_for(blocked_range<uint64_t>(0, data.size), dragon_draw);
 
 	/* 4. Effectuer le rendu final */
 	DragonRender dragon_render(&data);
 	parallel_for(blocked_range<uint64_t>(0, data.image_height), dragon_render);
 
+	cout << "Total intervals:\t" << counter << endl;
+
 	free_palette(palette);
 	FREE(data.tid);
+	tidMap->dump();
+	FREE(tidMap);
 	*canvas = dragon;
 	return 0;
 }
