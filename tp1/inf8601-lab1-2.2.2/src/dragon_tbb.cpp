@@ -7,6 +7,11 @@
 
 #include <iostream>
 
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
+#include <errno.h>
+
 extern "C"
 {
 #include "dragon.h"
@@ -16,23 +21,19 @@ extern "C"
 #include "dragon_tbb.h"
 #include "tbb/tbb.h"
 #include "TidMap.h"
-#include <stdarg.h>
+#include <atomic>
 
 using namespace std;
 using namespace tbb;
 
-int counter = 0;
+std::atomic<int> counter;
 
 #define PRINT_PTHREAD_ERROR(err, msg) \
-	do                                \
-	{                                 \
-		errno = err;                  \
-		perror(msg);                  \
-	} while (0)
+	do { errno = err; perror(msg); } while(0)
 
 pthread_mutex_t mutex_stdout;
 
-void printf_threadsafe(char *format, ...)
+void printf_threadsafe(const char *format, ...)
 {
 	va_list ap;
 
@@ -95,13 +96,11 @@ class DragonDraw
 
 	void operator()(const blocked_range<uint64_t> &range) const
 	{
-		// cout << "THREAD #" << _draw_data->id << " (Range : " << range.begin() << " - " << range.end() << ", Real TID : " << gettid() << endl;
-		int new_tid = _tidMap->getIdFromTid(gettid());
-		this->_draw_data->id = new_tid;
+		this->_draw_data->id = _tidMap->getIdFromTid(gettid());
 
-		counter++;
-		printf_threadsafe("THREAD\t (Range : %d - %d, Real TID : %d)\n", range.begin(), range.end(), gettid());
-
+		string msg = "THREAD #%d (Range : %d - %d, Real TID : %d)\n";
+		const char *array = msg.c_str();
+		printf_threadsafe(array, counter++, range.begin(), range.end(), gettid());
 
 		xy_t position;
 		xy_t orientation;
@@ -129,7 +128,6 @@ class DragonDraw
 					rotate_right(&orientation);
 			}
 		}
-
 	}
 
   private:
@@ -233,6 +231,7 @@ int dragon_draw_tbb(char **canvas, struct rgb *image, int width, int height, uin
 
 	/* 3. Dessiner le dragon : DragonDraw */
 
+	counter = 0;
 	TidMap *tidMap = new TidMap(nb_thread);
 
 	DragonDraw dragon_draw(&data, tidMap);
@@ -242,7 +241,7 @@ int dragon_draw_tbb(char **canvas, struct rgb *image, int width, int height, uin
 	DragonRender dragon_render(&data);
 	parallel_for(blocked_range<uint64_t>(0, data.image_height), dragon_render);
 
-	cout << "Total:\t" << counter << endl;
+	cout << "Total intervals:\t" << counter << endl;
 
 	free_palette(palette);
 	FREE(data.tid);
