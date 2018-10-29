@@ -69,7 +69,8 @@ void* dragon_draw_worker(void *data)
 	else
 		end = stepDepth * (worker_data->id + 1);
 
-	printf_threadsafe("THREAD #%d (Range : %d - %d, Real TID : %d)\n", worker_data->id, start, end, gettid());
+	//Décommenter pour la partie 3
+	//printf_threadsafe("THREAD #%d (Range : %d - %d, Real TID : %d)\n", worker_data->id, start, end, gettid());
 
 	for(int i = 0; i < NB_TILES; i++) {
 		dragon_draw_raw(i, start, end, worker_data->dragon, 
@@ -160,7 +161,8 @@ int dragon_draw_pthread(char **canvas, struct rgb *image, int width, int height,
 		data[i].id = i;
 	}
 
-	printf("-----PThread Stats Start-----\n");
+	//Décommenter pour la partie 3
+	//printf("-----PThread Stats Start-----\n");
 
 	/* 2. Lancement du calcul parallèle principal avec dragon_draw_worker */
 	for(int i = 0; i < nb_thread; i++) {
@@ -178,7 +180,8 @@ int dragon_draw_pthread(char **canvas, struct rgb *image, int width, int height,
 		}
 	}
 
-	printf("-----PThread Stats End-----\n");
+	//Décommenter pour la partie 3
+	//printf("-----PThread Stats End-----\n");
 
 	/* 4. Destruction des variables. */
 	if(pthread_barrier_destroy(&barrier)) {

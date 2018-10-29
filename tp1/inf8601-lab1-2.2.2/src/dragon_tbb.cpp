@@ -31,19 +31,6 @@ std::atomic<int> counter;
 #define PRINT_PTHREAD_ERROR(err, msg) \
 	do { errno = err; perror(msg); } while(0)
 
-pthread_mutex_t mutex_stdout;
-
-void printf_threadsafe(const char *format, ...)
-{
-	va_list ap;
-
-	va_start(ap, format);
-	pthread_mutex_lock(&mutex_stdout);
-	vprintf(format, ap);
-	pthread_mutex_unlock(&mutex_stdout);
-	va_end(ap);
-}
-
 class DragonLimits
 {
   public:
@@ -98,9 +85,7 @@ class DragonDraw
 	{
 		this->_draw_data->id = _tidMap->getIdFromTid(gettid());
 
-		string msg = "THREAD #%d (Range : %d - %d, Real TID : %d)\n";
-		const char *array = msg.c_str();
-		printf_threadsafe(array, counter++, range.begin(), range.end(), gettid());
+		counter++;
 
 		xy_t position;
 		xy_t orientation;
@@ -241,11 +226,15 @@ int dragon_draw_tbb(char **canvas, struct rgb *image, int width, int height, uin
 	DragonRender dragon_render(&data);
 	parallel_for(blocked_range<uint64_t>(0, data.image_height), dragon_render);
 
-	cout << "Total intervals:\t" << counter << endl;
+	//Décommenter pour la partie 3
+	//cout << "Total intervals:\t" << counter << endl;
 
 	free_palette(palette);
 	FREE(data.tid);
-	tidMap->dump();
+	
+	//Décommenter pour la partie 3
+	//tidMap->dump();
+	
 	FREE(tidMap);
 	*canvas = dragon;
 	return 0;
