@@ -1,0 +1,11 @@
+running check
+done
+PASS fast
+PASS slow_a
+PASS slow_b
+PASS slow_c
+PASS slow_d
+PASS slow_e
+PASS slow_f
+PASS hyperthread
+PASS test-all.sh (exit status: 0)
