@@ -128,10 +128,10 @@ error:
 int create_buffer(int width, int height)
 {
     /*
-     * TODO: initialiser la memoire requise avec clCreateBuffer()
+     * DONE: initialiser la memoire requise avec clCreateBuffer()
      */
     cl_int ret = 0;
-    goto error;
+    output = clCreateBuffer(context, CL_MEM_WRITE_ONLY, 3 * width * height, NULL, &ret);
 done:
     return ret;
 error:
@@ -177,8 +177,10 @@ void opencl_shutdown()
     if (context)	clReleaseContext(context);
 
     /*
-     * TODO: liberer les ressources allouees
+     * DONE: liberer les ressources allouees
      */
+    if (output) clReleaseMemObject(output);
+    if (kernel) clReleaseKernel(kernel);
 }
 
 int sinoscope_image_opencl(sinoscope_t *ptr)
@@ -205,6 +207,19 @@ int sinoscope_image_opencl(sinoscope_t *ptr)
 
     cl_int ret = 0;
     cl_event ev;
+
+    ret =
+        clSetKernelArg(kernel, 0, sizeof(cl_mem), &output) |
+        clSetKernelArg(kernel, 1, sizeof(int), &(ptr.width)) |
+        clSetKernelArg(kernel, 2, sizeof(int), &(ptr.height)) |
+        clSetKernelArg(kernel, 10, sizeof(int), &(ptr.interval)) |
+        clSetKernelArg(kernel, 11, sizeof(int), &(ptr.taylor)) |
+        clSetKernelArg(kernel, 3, sizeof(int), &(ptr.interval_inv)) |
+        clSetKernelArg(kernel, 4, sizeof(int), &(ptr.time)) |
+        clSetKernelArg(kernel, 6, sizeof(float), &(ptr.phase0)) |
+        clSetKernelArg(kernel, 7, sizeof(float), &(ptr.phase1)) |
+        clSetKernelArg(kernel, 8, sizeof(float), &(ptr.dx)) |
+        clSetKernelArg(kernel, 9, sizeof(float), &(ptr.dy));
 
     if (ptr == NULL)
         goto error;

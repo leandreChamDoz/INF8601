@@ -14,10 +14,56 @@
 
 #include "color.h"
 
+// #pragma omp declare target
 const struct rgb white = { .r = 255, .g = 255, .b = 255 };
 const struct rgb black = { .r = 0, .g = 0, .b = 0 };
+// static volatile struct rgb c;
 
-static volatile struct rgb c;
+// #pragma omp declare simd
+void value_color(struct rgb *color, float value, int interval, float interval_inv)
+{
+    if (isnan(value)) {
+        *color = black;
+        return;
+    }
+    struct rgb c;
+    int x = (((int)value % interval) * 255) * interval_inv;
+    int i = value * interval_inv;
+    switch(i) {
+    case 0:
+        c.r = 0;
+        c.g = x;
+        c.b = 255;
+        break;
+    case 1:
+        c.r = 0;
+        c.g = 255;
+        c.b = 255 - x;
+        break;
+    case 2:
+        c.r = x;
+        c.g = 255;
+        c.b = 0;
+        break;
+    case 3:
+        c.r = 255;
+        c.g = 255 - x;
+        c.b = 0;
+        break;
+    case 4:
+        c.r = 255;
+        c.g = 0;
+        c.b = x;
+        break;
+    default:
+        printf("ICI\n");
+        c = white;
+        break;
+    }
+    *color = c;
+}
+// #pragma omp end declare target
+
 
 int save_image(char *path, struct rgb *image, int width, int height)
 {
@@ -78,48 +124,6 @@ float get_color_interval_inv(float max)
     if (max < 4.0f)
         max = 4.0f;
     return (float) 4 / max;
-}
-
-void value_color(struct rgb *color, float value, int interval, float interval_inv)
-{
-    if (isnan(value)) {
-        *color = black;
-        return;
-    }
-    //struct rgb c;
-    int x = (((int)value % interval) * 255) * interval_inv;
-    int i = value * interval_inv;
-    switch(i) {
-    case 0:
-        c.r = 0;
-        c.g = x;
-        c.b = 255;
-        break;
-    case 1:
-        c.r = 0;
-        c.g = 255;
-        c.b = 255 - x;
-        break;
-    case 2:
-        c.r = x;
-        c.g = 255;
-        c.b = 0;
-        break;
-    case 3:
-        c.r = 255;
-        c.g = 255 - x;
-        c.b = 0;
-        break;
-    case 4:
-        c.r = 255;
-        c.g = 0;
-        c.b = x;
-        break;
-    default:
-        c = white;
-        break;
-    }
-    *color = c;
 }
 
 void hue(struct rgb **image, int width, int height)
