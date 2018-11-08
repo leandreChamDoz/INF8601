@@ -86,7 +86,34 @@ void value_color(struct rgb *color, float value, int interval, float interval_in
 	*color = c;
 }
 
-__kernel void sinoscope_kernel()
+__kernel void sinoscope_kernel(__global unsigned char* output,
+							   int width,
+							   int interval,
+							   int taylor,
+							   float interval_inv,
+							   float time,
+							   float phase0,
+							   float phase1,
+							   float dx,
+							   float dy)
 {
-	// TODO
+    struct rgb c;
+
+    int x = get_global_id(1);
+    int y = get_global_id(0);
+	float px = dx * y - 2 * M_PI;
+	float py = dy * x - 2 * M_PI;
+	float val = 0.0f;
+	for (int i = 1; i <= taylor; i += 2) {
+		val += sin(px * i * phase1 + time) / i + cos(py * i * phase0) / i;
+	}
+	val = (atan(1.0 * val) - atan(-1.0 * val)) / (M_PI);
+	val = (val + 1) * 100;
+	value_color(&c, val, interval, interval_inv);
+	int index = (y * 3) + (x * 3) * width;
+
+	#pragma OPENCL EXTENSION cl_khr_byte_addressable_store: enable
+	output[index + 0] = c.r;
+	output[index + 1] = c.g;
+	output[index + 2] = c.b;
 }

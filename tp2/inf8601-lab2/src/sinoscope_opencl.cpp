@@ -185,6 +185,8 @@ void opencl_shutdown()
 
 int sinoscope_image_opencl(sinoscope_t *ptr)
 {
+    
+
     //TODO("sinoscope_image_opencl");
     /*
      * TODO: Executer le noyau avec la fonction run_kernel().
@@ -210,16 +212,24 @@ int sinoscope_image_opencl(sinoscope_t *ptr)
 
     ret =
         clSetKernelArg(kernel, 0, sizeof(cl_mem), &output) |
-        clSetKernelArg(kernel, 1, sizeof(int), &(ptr.width)) |
-        clSetKernelArg(kernel, 2, sizeof(int), &(ptr.height)) |
-        clSetKernelArg(kernel, 10, sizeof(int), &(ptr.interval)) |
-        clSetKernelArg(kernel, 11, sizeof(int), &(ptr.taylor)) |
-        clSetKernelArg(kernel, 3, sizeof(int), &(ptr.interval_inv)) |
-        clSetKernelArg(kernel, 4, sizeof(int), &(ptr.time)) |
-        clSetKernelArg(kernel, 6, sizeof(float), &(ptr.phase0)) |
-        clSetKernelArg(kernel, 7, sizeof(float), &(ptr.phase1)) |
-        clSetKernelArg(kernel, 8, sizeof(float), &(ptr.dx)) |
-        clSetKernelArg(kernel, 9, sizeof(float), &(ptr.dy));
+        clSetKernelArg(kernel, 1, sizeof(int), &(ptr->width)) |
+        clSetKernelArg(kernel, 2, sizeof(int), &(ptr->interval)) |
+        clSetKernelArg(kernel, 3, sizeof(int), &(ptr->taylor)) |
+        clSetKernelArg(kernel, 4, sizeof(float), &(ptr->interval_inv)) |
+        clSetKernelArg(kernel, 5, sizeof(float), &(ptr->time)) |
+        clSetKernelArg(kernel, 6, sizeof(float), &(ptr->phase0)) |
+        clSetKernelArg(kernel, 7, sizeof(float), &(ptr->phase1)) |
+        clSetKernelArg(kernel, 8, sizeof(float), &(ptr->dx)) |
+        clSetKernelArg(kernel, 9, sizeof(float), &(ptr->dy));
+
+
+    size_t work_dim[2] = {(size_t) ptr->width, (size_t) ptr->height};
+    
+
+    clEnqueueNDRangeKernel(queue, kernel, 2, NULL, work_dim, NULL, 0, NULL, NULL);
+    clFinish(queue);
+    clEnqueueReadBuffer(queue, output, CL_TRUE, 0, ptr->buf_size, ptr->buf,
+                        0, NULL, NULL);
 
     if (ptr == NULL)
         goto error;
