@@ -127,9 +127,6 @@ error:
 
 int create_buffer(int width, int height)
 {
-    /*
-     * DONE: initialiser la memoire requise avec clCreateBuffer()
-     */
     cl_int ret = 0;
     output = clCreateBuffer(context, CL_MEM_WRITE_ONLY, 3 * width * height, NULL, &ret);
 done:
@@ -174,41 +171,16 @@ error:
 void opencl_shutdown()
 {
     if (queue) 	clReleaseCommandQueue(queue);
-    if (context)	clReleaseContext(context);
-
-    /*
-     * DONE: liberer les ressources allouees
-     */
+    if (context)	clReleaseContext(context); 
     if (output) clReleaseMemObject(output);
     if (kernel) clReleaseKernel(kernel);
 }
 
 int sinoscope_image_opencl(sinoscope_t *ptr)
 {
-    
-
-    //TODO("sinoscope_image_opencl");
-    /*
-     * TODO: Executer le noyau avec la fonction run_kernel().
-     *
-     *       1. Passer les arguments au noyau avec clSetKernelArg(). Si des
-     *          arguments sont passees par un tampon, copier les valeurs avec
-     *          clEnqueueWriteBuffer() de maniere synchrone.
-     *
-     *       2. Appeller le noyau avec clEnqueueNDRangeKernel(). L'argument
-     *          work_dim de clEnqueueNDRangeKernel() est un tableau size_t
-     *          avec les dimensions width et height.
-     *
-     *       3. Attendre que le noyau termine avec clFinish()
-     *
-     *       4. Copier le resultat dans la structure sinoscope_t avec
-     *          clEnqueueReadBuffer() de maniere synchrone
-     *
-     *       Utilisez ERR_THROW partout pour gerer systematiquement les exceptions
-     */
-
     cl_int ret = 0;
     cl_event ev;
+    size_t work_dim[2] = {(size_t) ptr->width, (size_t) ptr->height};
 
     ret =
         clSetKernelArg(kernel, 0, sizeof(cl_mem), &output) |
@@ -222,14 +194,16 @@ int sinoscope_image_opencl(sinoscope_t *ptr)
         clSetKernelArg(kernel, 8, sizeof(float), &(ptr->dx)) |
         clSetKernelArg(kernel, 9, sizeof(float), &(ptr->dy));
 
+    ERR_THROW(CL_SUCCESS, ret, "clSetKernelArg failed");
 
-    size_t work_dim[2] = {(size_t) ptr->width, (size_t) ptr->height};
-    
+    ret = clEnqueueNDRangeKernel(queue, kernel, 2, NULL, work_dim, NULL, 0, NULL, &ev);
+    ERR_THROW(CL_SUCCESS, ret, "clEnqueueNDRangeKernel failed");
 
-    clEnqueueNDRangeKernel(queue, kernel, 2, NULL, work_dim, NULL, 0, NULL, NULL);
-    clFinish(queue);
-    clEnqueueReadBuffer(queue, output, CL_TRUE, 0, ptr->buf_size, ptr->buf,
-                        0, NULL, NULL);
+    ret = clFinish(queue);
+    ERR_THROW(CL_SUCCESS, ret, "clFinish failed");
+
+    ret = clEnqueueReadBuffer(queue, output, CL_TRUE, 0, ptr->buf_size, ptr->buf, 0, NULL, &ev);
+    ERR_THROW(CL_SUCCESS, ret, "clEnqueueReadBuffer failed");
 
     if (ptr == NULL)
         goto error;
