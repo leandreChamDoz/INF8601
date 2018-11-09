@@ -23,22 +23,32 @@ int sinoscope_image_openmp(sinoscope_t *ptr)
     struct rgb c;
     float val, px, py;
     unsigned char *buffer = sino.buf;
+    float dx = sino.dx;
+    float dy = sino.dy;
+    int width = sino.width;
+    int height = sino.height;
+    int t_limit = sino.taylor;
+    float phase0 = sino.phase0;
+    float phase1 = sino.phase1;
+    float t = sino.time;
+    float interval = sino.interval;
+    float interval_inv = sino.interval_inv;
 
-    #pragma omp parallel for private(x, y, px, py, c, val, taylor, index)
-    for (x = 1; x < sino.width - 1; x++)
-        for (y = 1; y < sino.height - 1; y++)
+    for (x = 1; x < width - 1; x++)
+        #pragma omp parallel for private(px, py, c, val, taylor, index)
+        for (y = 1; y < height - 1; y++)
         {
-            px = sino.dx * y - 2 * M_PI;
-            py = sino.dy * x - 2 * M_PI;
+            px = dx * y - 2 * M_PI;
+            py = dy * x - 2 * M_PI;
             val = 0.0f;
 
-            for (taylor = 1; taylor <= sino.taylor; taylor += 2)
-                val += sin(px * taylor * sino.phase1 + sino.time) / taylor + cos(py * taylor * sino.phase0) / taylor;
+            for (taylor = 1; taylor <= t_limit; taylor += 2)
+                val += sin(px * taylor * phase1 + t) / taylor + cos(py * taylor * phase0) / taylor;
 
             val = (atan(1.0 * val) - atan(-1.0 * val)) / (M_PI);
             val = (val + 1) * 100;
-            value_color(&c, val, sino.interval, sino.interval_inv);
-            index = (y * 3) + (x * 3) * sino.width;
+            value_color(&c, val, interval, interval_inv);
+            index = (y * 3) + (x * 3) * width;
             buffer[index + 0] = c.r;
             buffer[index + 1] = c.g;
             buffer[index + 2] = c.b;
