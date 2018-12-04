@@ -285,7 +285,7 @@ int init_ctx(ctx_t *ctx, opts_t *opts) {
 		MPI_Wait(&req[2], &status[2]);
 	}
 	
-	
+	printf("hello");
 
 	/*
 	 * TODO: Envoyer les dimensions de la grid dimensions et les données
