@@ -200,6 +200,8 @@ int init_ctx(ctx_t *ctx, opts_t *opts) {
 	MPI_Comm_size(MPI_COMM_WORLD, &ctx->numprocs);
 	MPI_Comm_rank(MPI_COMM_WORLD, &ctx->rank);
 
+	printf("%d, %d, %d\n", opts->dimx, opts->dimy, ctx->numprocs);
+
 	if (opts->dimx * opts->dimy != ctx->numprocs) {
 		fprintf(stderr,
 				"2D decomposition blocks must equal number of process\n");
@@ -284,8 +286,6 @@ int init_ctx(ctx_t *ctx, opts_t *opts) {
 
 		MPI_Wait(&req[2], &status[2]);
 	}
-	
-	printf("hello1");
 
 	/*
 	 * TODO: Envoyer les dimensions de la grid dimensions et les données
@@ -313,8 +313,6 @@ int init_ctx(ctx_t *ctx, opts_t *opts) {
 	MPI_Type_vector(ctx->curr_grid->height, 1, ctx->curr_grid->pw, MPI_DOUBLE, &ctx->vector);
 	MPI_Type_commit(&ctx->vector);
 
-	printf("hello2");
-
 	return 0;
 	err: return -1;
 }
@@ -335,8 +333,6 @@ void exchng2d(ctx_t *ctx) {
 	 */
 
 	// TODO("lab3");
-	
-	printf("hello3");
 
 	grid_t *grid = ctx->next_grid;
 	int width = grid->pw;
@@ -358,15 +354,11 @@ void exchng2d(ctx_t *ctx) {
 	MPI_Irecv(data, 1, ctx->vector, ctx->west_peer ,3, comm, &req[7]);
 
 	MPI_Waitall(8, req, status);
-
-	printf("hello4");
 	 
 }
 
 int gather_result(ctx_t *ctx, opts_t *opts) {
 	// TODO("lab3");
-
-	printf("hello5");
 
 	int ret = 0;
 	grid_t *local_grid = grid_padding(ctx->next_grid, 0);
@@ -417,9 +409,6 @@ int gather_result(ctx_t *ctx, opts_t *opts) {
 		MPI_Isend(n_grid->dbl, n_grid->width * n_grid->height, MPI_DOUBLE, 0, ctx->rank, ctx->comm2d, &request);
 		MPI_Wait(&request, &stat);
 	}
-
-	printf("hello6");
-
 
 	/* now we can merge all data blocks, reuse global_grid */
 	//cart2d_grid_merge(ctx->cart, ctx->global_grid);
