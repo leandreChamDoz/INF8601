@@ -81,7 +81,7 @@
 #define PACKAGE_NAME "INF8601-LAB3"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "INF8601-LAB3 2.1.2"
+#define PACKAGE_STRING "INF8601-LAB3 2.1.5"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "inf8601-lab3"
@@ -90,7 +90,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "2.1.2"
+#define PACKAGE_VERSION "2.1.5"
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
@@ -118,7 +118,7 @@
 
 
 /* Version number of package */
-#define VERSION "2.1.2"
+#define VERSION "2.1.5"
 
 /* Define to 1 if on MINIX. */
 /* #undef _MINIX */
