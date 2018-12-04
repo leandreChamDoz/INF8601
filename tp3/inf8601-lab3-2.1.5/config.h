@@ -29,7 +29,7 @@
 #define HAVE_MEMORY_H 1
 
 /* MPI support */
-/* #undef HAVE_MPI */
+#define HAVE_MPI 1
 
 /* Define to 1 if you have the <pthread.h> header file. */
 #define HAVE_PTHREAD_H 1
