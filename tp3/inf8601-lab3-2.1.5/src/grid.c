@@ -36,7 +36,9 @@ error:
 void free_grid(grid_t *grid) {
 	if (grid != NULL) {
 		FREE(grid->data);
+		printf("hey1");
 		FREE(grid->dbl);
+		printf("hey2");
 	}
 	FREE(grid);
 }
