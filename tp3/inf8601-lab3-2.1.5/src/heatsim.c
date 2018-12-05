@@ -183,16 +183,23 @@ ctx_t *make_ctx() {
 void free_ctx(ctx_t *ctx) {
 	if (ctx == NULL)
 		return;
+
 	free_grid(ctx->global_grid);
+	printf("hello5");
 	free_grid(ctx->curr_grid);
+	printf("hello6");
 	free_grid(ctx->next_grid);
+	printf("hello7");
 	free_grid(ctx->heat_grid);
+	printf("hello8");
 	free_cart2d(ctx->cart);
+	printf("hello9");
 	if (ctx->log != NULL) {
 		fflush(ctx->log);
 		fclose(ctx->log);
 	}
 	FREE(ctx);
+	printf("hello10");
 }
 
 int init_ctx(ctx_t *ctx, opts_t *opts) {
@@ -490,7 +497,7 @@ int main(int argc, char **argv) {
 done:
 	printf("hello4");
 	free_ctx(ctx);
-	printf("hello5");
+	printf("hello11");
 	MPI_Finalize();
 	FREE(opts.input);
 	FREE(opts.output);
