@@ -202,6 +202,7 @@ int init_ctx(ctx_t *ctx, opts_t *opts) {
 
 	if (opts->dimx * opts->dimy != ctx->numprocs) {
 		printf("%d, %d, %d\n", opts->dimx, opts->dimy, ctx->numprocs);
+		printf("hello");
 		fprintf(stderr,
 				"2D decomposition blocks must equal number of process\n");
 		goto err;
