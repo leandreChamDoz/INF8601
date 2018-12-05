@@ -186,6 +186,8 @@ void free_ctx(ctx_t *ctx) {
 
 	free_grid(ctx->global_grid);
 	printf("hello5");
+	ctx->curr_grid->data == NULL;
+	printf("helloAAAA");
 	free_grid(ctx->curr_grid);
 	printf("hello6");
 	free_grid(ctx->next_grid);
