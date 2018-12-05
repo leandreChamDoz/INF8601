@@ -424,7 +424,7 @@ int gather_result(ctx_t *ctx, opts_t *opts) {
 	/* temporairement copie de next_grid */
 	
 
-	done: free_grid(local_grid);
+	done: //free_grid(local_grid);
 	return ret;
 	err: ret = -1;
 	goto done;
