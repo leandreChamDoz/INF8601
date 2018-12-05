@@ -186,6 +186,9 @@ void free_ctx(ctx_t *ctx) {
 
 	free_grid(ctx->global_grid);
 	printf("hello5");
+	if (ctx->curr_grid == NULL) {
+		printf("knew it!");
+	}
 	free_grid(ctx->curr_grid);
 	printf("hello6");
 	free_grid(ctx->next_grid);
@@ -288,7 +291,6 @@ int init_ctx(ctx_t *ctx, opts_t *opts) {
 		new_grid = make_grid(new_width, new_height, 0);
 
 		MPI_Irecv(new_grid->dbl, new_width * new_height, MPI_INTEGER, 0, ctx->rank * 3, ctx->comm2d, &req[0]);
-
 		MPI_Wait(&req[2], &status[2]);
 	}
 
@@ -311,7 +313,7 @@ int init_ctx(ctx_t *ctx, opts_t *opts) {
 	ctx->curr_grid = grid_padding(new_grid, 1);
 	ctx->next_grid = grid_padding(new_grid, 1);
 	ctx->heat_grid = grid_padding(new_grid, 1);
-	//free_grid(new_grid);
+	free_grid(new_grid);
 
 	/* TODO: Créer un type vector pour échanger les colonnes */
 
@@ -420,7 +422,7 @@ int gather_result(ctx_t *ctx, opts_t *opts) {
 	/* temporairement copie de next_grid */
 	
 
-	done: //free_grid(local_grid);
+	done: free_grid(local_grid);
 	return ret;
 	err: ret = -1;
 	goto done;
