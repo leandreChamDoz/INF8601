@@ -489,6 +489,7 @@ int main(int argc, char **argv) {
 	ret = EXIT_SUCCESS;
 done:
 	free_ctx(ctx);
+	printf("hello4");
 	MPI_Finalize();
 	FREE(opts.input);
 	FREE(opts.output);
