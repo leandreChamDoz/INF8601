@@ -291,6 +291,7 @@ int init_ctx(ctx_t *ctx, opts_t *opts) {
 		new_grid = make_grid(new_width, new_height, 0);
 
 		MPI_Irecv(new_grid->dbl, new_width * new_height, MPI_INTEGER, 0, ctx->rank * 3, ctx->comm2d, &req[0]);
+
 		MPI_Wait(&req[2], &status[2]);
 	}
 
@@ -313,7 +314,7 @@ int init_ctx(ctx_t *ctx, opts_t *opts) {
 	ctx->curr_grid = grid_padding(new_grid, 1);
 	ctx->next_grid = grid_padding(new_grid, 1);
 	ctx->heat_grid = grid_padding(new_grid, 1);
-	free_grid(new_grid);
+	//free_grid(new_grid);
 
 	/* TODO: Créer un type vector pour échanger les colonnes */
 
