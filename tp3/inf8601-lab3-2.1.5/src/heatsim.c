@@ -488,8 +488,9 @@ int main(int argc, char **argv) {
 	MPI_Barrier(MPI_COMM_WORLD);
 	ret = EXIT_SUCCESS;
 done:
-	free_ctx(ctx);
 	printf("hello4");
+	free_ctx(ctx);
+	printf("hello5");
 	MPI_Finalize();
 	FREE(opts.input);
 	FREE(opts.output);
