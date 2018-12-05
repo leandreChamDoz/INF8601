@@ -201,7 +201,7 @@ int init_ctx(ctx_t *ctx, opts_t *opts) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &ctx->rank);
 
 	if (opts->dimx * opts->dimy != ctx->numprocs) {
-		printf("%d, %d, %d\n", opts->dimx, opts->dimy, ctx->numprocs);
+		fprintf(stderr, "%d, %d, %d\n", opts->dimx, opts->dimy, ctx->numprocs);
 		printf("hello");
 		fprintf(stderr,
 				"2D decomposition blocks must equal number of process\n");
