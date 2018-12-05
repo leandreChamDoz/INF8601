@@ -432,7 +432,7 @@ int main(int argc, char **argv) {
 		dump_opts(&opts);
 
 	MPI_Init(&argc, &argv);
-
+	printf("hello1");
 	ctx = make_ctx();
 	if (init_ctx(ctx, &opts) < 0)
 		goto err;
@@ -456,7 +456,7 @@ int main(int argc, char **argv) {
 			fprintf(ctx->log, "grid_set_min\n");
 			fdump_grid(ctx->curr_grid, ctx->log);
 		}
-
+		printf("hello2");
 		exchng2d(ctx);
 		if (ctx->verbose) {
 			fprintf(ctx->log, "exchng2d\n");
@@ -475,7 +475,7 @@ int main(int argc, char **argv) {
 	if (gather_result(ctx, &opts) < 0)
 		goto err;
 
-	printf("hello");
+	printf("hello3");
 
 	if (ctx->rank == 0) {
 		printf("saving...\n");
