@@ -41,6 +41,7 @@ void free_grid(grid_t *grid) {
 		printf("hey2");
 	}
 	FREE(grid);
+	printf("hey3");
 }
 
 grid_t *grid_clone(grid_t *grid) {
