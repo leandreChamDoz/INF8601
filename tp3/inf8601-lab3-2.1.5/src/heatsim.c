@@ -234,11 +234,23 @@ int init_ctx(ctx_t *ctx, opts_t *opts)
 	ctx->isperiodic[1] = 1;
 	ctx->reorder = 0;
 	grid_t *new_grid = NULL;
+	int ret = MPI_SUCCESS;
 
-	MPI_Cart_create(MPI_COMM_WORLD, DIM_2D, ctx->dims, ctx->isperiodic, ctx->reorder, &ctx->comm2d);
-	MPI_Cart_shift(ctx->comm2d, 1, 1, &ctx->north_peer, &ctx->south_peer);
-	MPI_Cart_shift(ctx->comm2d, 0, 1, &ctx->west_peer, &ctx->east_peer);
-	MPI_Cart_coords(ctx->comm2d, ctx->rank, DIM_2D, ctx->coords);
+	ret = MPI_Cart_create(MPI_COMM_WORLD, DIM_2D, ctx->dims, ctx->isperiodic, ctx->reorder, &ctx->comm2d);
+	if (ret != MPI_SUCCESS)
+		goto err;
+
+	ret = MPI_Cart_shift(ctx->comm2d, 1, 1, &ctx->north_peer, &ctx->south_peer);
+	if (ret != MPI_SUCCESS)
+		goto err;
+
+	ret = MPI_Cart_shift(ctx->comm2d, 0, 1, &ctx->west_peer, &ctx->east_peer);
+	if (ret != MPI_SUCCESS)
+		goto err;
+
+	ret = MPI_Cart_coords(ctx->comm2d, ctx->rank, DIM_2D, ctx->coords);
+	if (ret != MPI_SUCCESS)
+		goto err;
 
 	if (ctx->rank == 0)
 	{
@@ -266,20 +278,37 @@ int init_ctx(ctx_t *ctx, opts_t *opts)
 
 		for (int process_id = 1; process_id < nb_it; process_id++)
 		{
-			MPI_Cart_coords(ctx->comm2d, process_id, DIM_2D, coords);
+			ret = MPI_Cart_coords(ctx->comm2d, process_id, DIM_2D, coords);
+			if (ret != MPI_SUCCESS)
+				goto err;
 
 			grid_t *grid = cart2d_get_grid(ctx->cart, coords[0], coords[1]);
 
-			MPI_Isend(&grid->width, 1, MPI_INTEGER, process_id, process_id * 4, ctx->comm2d, &req[(process_id - 1) * 4]);
-			MPI_Isend(&grid->height, 1, MPI_INTEGER, process_id, process_id * 4 + 1, ctx->comm2d, &req[(process_id - 1) * 4 + 1]);
-			MPI_Isend(&grid->padding, 1, MPI_INTEGER, process_id, process_id * 4 + 2, ctx->comm2d, &req[(process_id - 1) * 4 + 2]);
+			ret = MPI_Isend(&grid->width, 1, MPI_INTEGER, process_id, process_id * 4, ctx->comm2d, &req[(process_id - 1) * 4]);
+			if (ret != MPI_SUCCESS)
+				goto err;
 
-			MPI_Isend(grid->dbl, grid->width * grid->height, MPI_DOUBLE, process_id, process_id * 4 + 3, ctx->comm2d, &req[(process_id - 1) * 4 + 3]);
+			ret = MPI_Isend(&grid->height, 1, MPI_INTEGER, process_id, process_id * 4 + 1, ctx->comm2d, &req[(process_id - 1) * 4 + 1]);
+			if (ret != MPI_SUCCESS)
+				goto err;
+
+			ret = MPI_Isend(&grid->padding, 1, MPI_INTEGER, process_id, process_id * 4 + 2, ctx->comm2d, &req[(process_id - 1) * 4 + 2]);
+			if (ret != MPI_SUCCESS)
+				goto err;
+
+			ret = MPI_Isend(grid->dbl, grid->width * grid->height, MPI_DOUBLE, process_id, process_id * 4 + 3, ctx->comm2d, &req[(process_id - 1) * 4 + 3]);
+			if (ret != MPI_SUCCESS)
+				goto err;
 		}
 
-		MPI_Waitall((nb_it - 1) * 4, req, status);
+		ret = MPI_Waitall((nb_it - 1) * 4, req, status);
+		if (ret != MPI_SUCCESS)
+			goto err;
 
-		MPI_Cart_coords(ctx->comm2d, ctx->rank, DIM_2D, coords);
+		ret = MPI_Cart_coords(ctx->comm2d, ctx->rank, DIM_2D, coords);
+		if (ret != MPI_SUCCESS)
+			goto err;
+
 		new_grid = cart2d_get_grid(ctx->cart, coords[0], coords[1]);
 	}
 	else
@@ -289,17 +318,31 @@ int init_ctx(ctx_t *ctx, opts_t *opts)
 
 		int new_width, new_height, new_padding;
 
-		MPI_Irecv(&new_width, 1, MPI_INTEGER, 0, ctx->rank * 4, ctx->comm2d, &req[0]);
-		MPI_Irecv(&new_height, 1, MPI_INTEGER, 0, ctx->rank * 4 + 1, ctx->comm2d, &req[1]);
-		MPI_Irecv(&new_padding, 1, MPI_INTEGER, 0, ctx->rank * 4 + 2, ctx->comm2d, &req[2]);
+		ret = MPI_Irecv(&new_width, 1, MPI_INTEGER, 0, ctx->rank * 4, ctx->comm2d, &req[0]);
+		if (ret != MPI_SUCCESS)
+			goto err;
 
-		MPI_Waitall(3, req, status);
+		ret = MPI_Irecv(&new_height, 1, MPI_INTEGER, 0, ctx->rank * 4 + 1, ctx->comm2d, &req[1]);
+		if (ret != MPI_SUCCESS)
+			goto err;
+
+		ret = MPI_Irecv(&new_padding, 1, MPI_INTEGER, 0, ctx->rank * 4 + 2, ctx->comm2d, &req[2]);
+		if (ret != MPI_SUCCESS)
+			goto err;
+
+		ret = MPI_Waitall(3, req, status);
+		if (ret != MPI_SUCCESS)
+			goto err;
 
 		new_grid = make_grid(new_width, new_height, new_padding);
 
-		MPI_Irecv(new_grid->dbl, new_grid->pw * new_grid->ph, MPI_DOUBLE, 0, ctx->rank * 4 + 3, ctx->comm2d, &req[3]);
+		ret = MPI_Irecv(new_grid->dbl, new_grid->pw * new_grid->ph, MPI_DOUBLE, 0, ctx->rank * 4 + 3, ctx->comm2d, &req[3]);
+		if (ret != MPI_SUCCESS)
+			goto err;
 
-		MPI_Wait(&req[3], &status[3]);
+		ret = MPI_Wait(&req[3], &status[3]);
+		if (ret != MPI_SUCCESS)
+			goto err;
 	}
 
 	if (new_grid == NULL)
@@ -308,8 +351,13 @@ int init_ctx(ctx_t *ctx, opts_t *opts)
 	ctx->next_grid = grid_padding(new_grid, 1);
 	ctx->heat_grid = grid_padding(new_grid, 1);
 
-	MPI_Type_vector(ctx->curr_grid->height, 1, ctx->curr_grid->pw, MPI_DOUBLE, &ctx->vector);
-	MPI_Type_commit(&ctx->vector);
+	ret = MPI_Type_vector(ctx->curr_grid->height, 1, ctx->curr_grid->pw, MPI_DOUBLE, &ctx->vector);
+	if (ret != MPI_SUCCESS)
+		goto err;
+
+	ret = MPI_Type_commit(&ctx->vector);
+	if (ret != MPI_SUCCESS)
+		goto err;
 
 	return 0;
 err:
@@ -335,18 +383,76 @@ void exchng2d(ctx_t *ctx)
 	MPI_Comm comm = ctx->comm2d;
 	MPI_Request req[8];
 	MPI_Status status[8];
+	int ret = MPI_SUCCESS;
 
-	MPI_Isend(data, width, MPI_DOUBLE, ctx->north_peer, 0, comm, &req[0]);
-	MPI_Isend(data + width * (height - 1), width, MPI_DOUBLE, ctx->south_peer, 1, comm, &req[1]);
-	MPI_Isend(data, 1, ctx->vector, ctx->west_peer, 2, comm, &req[2]);
-	MPI_Isend(data + width - 1, 1, ctx->vector, ctx->east_peer, 3, comm, &req[3]);
+	ret = MPI_Isend(data, width, MPI_DOUBLE, ctx->north_peer, 0, comm, &req[0]);
+	if (ret != MPI_SUCCESS)
+	{
+		printf("HERE 1\n");
+		goto err;
+	}
 
-	MPI_Irecv(data + width * (height - 1), width, MPI_DOUBLE, ctx->south_peer, 0, comm, &req[4]);
-	MPI_Irecv(data, width, MPI_DOUBLE, ctx->north_peer, 1, comm, &req[5]);
-	MPI_Irecv(data + width - 1, 1, ctx->vector, ctx->east_peer, 2, comm, &req[6]);
-	MPI_Irecv(data, 1, ctx->vector, ctx->west_peer, 3, comm, &req[7]);
+	ret = MPI_Isend(data + width * (height - 1), width, MPI_DOUBLE, ctx->south_peer, 1, comm, &req[1]);
+	if (ret != MPI_SUCCESS)
+	{
+		printf("HERE 2\n");
+		goto err;
+	}
 
-	MPI_Waitall(8, req, status);
+	ret = MPI_Isend(data, 1, ctx->vector, ctx->west_peer, 2, comm, &req[2]);
+	if (ret != MPI_SUCCESS)
+	{
+		printf("HERE 3\n");
+		goto err;
+	}
+
+	ret = MPI_Isend(data + width - 1, 1, ctx->vector, ctx->east_peer, 3, comm, &req[3]);
+	if (ret != MPI_SUCCESS)
+	{
+		printf("HERE 4\n");
+		goto err;
+	}
+
+	ret = MPI_Irecv(data + width * (height - 1), width, MPI_DOUBLE, ctx->south_peer, 0, comm, &req[4]);
+	if (ret != MPI_SUCCESS)
+	{
+		printf("HERE 5\n");
+		goto err;
+	}
+
+	ret = MPI_Irecv(data, width, MPI_DOUBLE, ctx->north_peer, 1, comm, &req[5]);
+	if (ret != MPI_SUCCESS)
+	{
+		printf("HERE 6\n");
+		goto err;
+	}
+
+	ret = MPI_Irecv(data + width - 1, 1, ctx->vector, ctx->east_peer, 2, comm, &req[6]);
+	if (ret != MPI_SUCCESS)
+	{
+		printf("HERE 7\n");
+		goto err;
+	}
+
+	ret = MPI_Irecv(data, 1, ctx->vector, ctx->west_peer, 3, comm, &req[7]);
+	if (ret != MPI_SUCCESS)
+	{
+		printf("HERE 8\n");
+		goto err;
+	}
+
+	ret = MPI_Waitall(8, req, status);
+	if (ret != MPI_SUCCESS)
+	{
+		printf("HERE 9\n");
+		goto err;
+	}
+
+done:
+	return;
+err:
+	printf("An error has occured in exchng2d\n");
+	goto done;
 }
 
 int gather_result(ctx_t *ctx, opts_t *opts)
@@ -368,14 +474,22 @@ int gather_result(ctx_t *ctx, opts_t *opts)
 		for (int process_id = 1; process_id < nb_it; ++process_id)
 		{
 
-			MPI_Cart_coords(ctx->comm2d, process_id, DIM_2D, coords);
+			ret = MPI_Cart_coords(ctx->comm2d, process_id, DIM_2D, coords);
+			if (ret != MPI_SUCCESS)
+				goto err;
+
 			grid = cart2d_get_grid(ctx->cart, coords[0], coords[1]);
-			MPI_Irecv(grid->dbl, grid->width * grid->height, MPI_DOUBLE, process_id, DIM_2D, ctx->comm2d, &req[process_id - 1]);
+			ret = MPI_Irecv(grid->dbl, grid->width * grid->height, MPI_DOUBLE, process_id, DIM_2D, ctx->comm2d, &req[process_id - 1]);
+			if (ret != MPI_SUCCESS)
+				goto err;
 		}
 
 		MPI_Waitall(nb_it - 1, req, status);
 
-		MPI_Cart_coords(ctx->comm2d, ctx->rank, DIM_2D, coords);
+		ret = MPI_Cart_coords(ctx->comm2d, ctx->rank, DIM_2D, coords);
+		if (ret != MPI_SUCCESS)
+			goto err;
+
 		grid = cart2d_get_grid(ctx->cart, coords[0], coords[1]);
 		grid_copy(ctx->next_grid, grid);
 
@@ -388,8 +502,13 @@ int gather_result(ctx_t *ctx, opts_t *opts)
 
 		grid = grid_padding(ctx->next_grid, 0);
 
-		MPI_Isend(grid->dbl, grid->height * grid->width, MPI_DOUBLE, 0, DIM_2D, ctx->comm2d, &request);
-		MPI_Waitall(1, &request, &stat);
+		ret = MPI_Isend(grid->dbl, grid->height * grid->width, MPI_DOUBLE, 0, DIM_2D, ctx->comm2d, &request);
+		if (ret != MPI_SUCCESS)
+			goto err;
+
+		ret = MPI_Waitall(1, &request, &stat);
+		if (ret != MPI_SUCCESS)
+			goto err;
 	}
 
 done:
