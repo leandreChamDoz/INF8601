@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "mpi.h": "c",
+        "string.h": "c"
+    }
+}
